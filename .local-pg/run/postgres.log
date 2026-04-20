@@ -1,0 +1,136 @@
+2026-04-20 13:54:33.698 MSK [21692] LOG:  starting PostgreSQL 18.3 on x86_64-windows, compiled by msvc-19.44.35223, 64-bit
+2026-04-20 13:54:33.701 MSK [21692] LOG:  listening on IPv6 address "::1", port 5433
+2026-04-20 13:54:33.701 MSK [21692] LOG:  listening on IPv4 address "127.0.0.1", port 5433
+2026-04-20 13:54:33.840 MSK [8892] LOG:  database system was shut down at 2026-04-20 13:54:27 MSK
+2026-04-20 13:54:33.845 MSK [21692] LOG:  database system is ready to accept connections
+2026-04-20 13:54:44.772 MSK [3056] FATAL:  role "ptitc" does not exist
+2026-04-20 13:54:50.853 MSK [15580] ERROR:  schema "analytics" does not exist
+2026-04-20 13:54:50.853 MSK [15580] STATEMENT:  truncate table analytics.ride_metrics_daily restart identity cascade;
+2026-04-20 13:54:50.854 MSK [15580] ERROR:  schema "app" does not exist
+2026-04-20 13:54:50.854 MSK [15580] STATEMENT:  truncate table app.semantic_terms restart identity cascade;
+2026-04-20 13:54:50.854 MSK [15580] ERROR:  relation "app.semantic_terms" does not exist at character 13
+2026-04-20 13:54:50.854 MSK [15580] STATEMENT:  insert into app.semantic_terms (term, kind, canonical_value, description) values
+	('поездки', 'metric', 'completed_rides', 'Количество завершенных поездок'),
+	('завершенные поездки', 'metric', 'completed_rides', 'Количество завершенных поездок'),
+	('заказы', 'metric', 'total_rides', 'Все поездки'),
+	('отмены', 'metric', 'cancellations', 'Количество отмен'),
+	('выручка', 'metric', 'revenue', 'Суммарная выручка'),
+	('средний чек', 'metric', 'avg_fare', 'Средняя стоимость поездки'),
+	('активные водители', 'metric', 'active_drivers', 'Количество активных водителей'),
+	('по городам', 'dimension', 'city', 'Группировка по городам'),
+	('по тарифам', 'dimension', 'service_class', 'Группировка по тарифам'),
+	('по каналам', 'dimension', 'source_channel', 'Группировка по каналам'),
+	('по дням', 'dimension', 'day', 'Группировка по дням'),
+	('по неделям', 'dimension', 'week', 'Группировка по неделям'),
+	('по месяцам', 'dimension', 'month', 'Группировка по месяцам'),
+	('москва', 'filter', 'Москва', 'Фильтр по городу'),
+	('питер', 'filter', 'Санкт-Петербург', 'Фильтр по городу'),
+	('казань', 'filter', 'Казань', 'Фильтр по городу'),
+	('эконом', 'filter', 'Эконом', 'Фильтр по тарифу'),
+	('комфорт', 'filter', 'Комфорт', 'Фильтр по тарифу'),
+	('бизнес', 'filter', 'Бизнес', 'Фильтр по тарифу'),
+	('приложение', 'filter', 'Приложение', 'Фильтр по каналу'),
+	('сайт', 'filter', 'Сайт', 'Фильтр по каналу'),
+	('партнеры', 'filter', 'Партнеры', 'Фильтр по каналу');
+2026-04-20 13:54:50.855 MSK [15580] ERROR:  relation "analytics.ride_metrics_daily" does not exist at character 1710
+2026-04-20 13:54:50.855 MSK [15580] STATEMENT:  with days as (
+	    select generate_series(current_date - interval '89 day', current_date, interval '1 day')::date as stat_date
+	),
+	cities as (
+	    select * from (values
+	        ('Москва', 5),
+	        ('Санкт-Петербург', 4),
+	        ('Казань', 3),
+	        ('Екатеринбург', 2),
+	        ('Новосибирск', 1)
+	    ) as t(city, city_weight)
+	),
+	classes as (
+	    select * from (values
+	        ('Эконом', 1, 340.0),
+	        ('Комфорт', 2, 510.0),
+	        ('Бизнес', 3, 880.0)
+	    ) as t(service_class, class_weight, base_fare)
+	),
+	channels as (
+	    select * from (values
+	        ('Приложение', 3),
+	        ('Сайт', 2),
+	        ('Партнеры', 1)
+	    ) as t(source_channel, channel_weight)
+	),
+	segments as (
+	    select * from (values
+	        ('Новые', 1),
+	        ('Стабильные', 3),
+	        ('Премиум', 2)
+	    ) as t(driver_segment, segment_weight)
+	),
+	base as (
+	    select
+	        d.stat_date,
+	        c.city,
+	        cl.service_class,
+	        ch.source_channel,
+	        s.driver_segment,
+	        35 + ((extract(doy from d.stat_date)::int * 7 + c.city_weight * 13 + cl.class_weight * 17 + ch.channel_weight * 19 + s.segment_weight * 23) % 120) as completed_rides,
+	        4 + ((extract(doy from d.stat_date)::int * 5 + c.city_weight * 7 + cl.class_weight * 9 + ch.channel_weight * 11 + s.segment_weight * 13) % 25) as cancelled_rides,
+	        cl.base_fare + (c.city_weight * 45) + (ch.channel_weight * 15) + (s.segment_weight * 22) as avg_fare_rub,
+	        12 + ((extract(doy from d.stat_date)::int * 3 + c.city_weight * 5 + cl.class_weight * 7 + s.segment_weight * 11) % 65) as active_drivers
+	    from days d
+	    cross join cities c
+	    cross join classes cl
+	    cross join channels ch
+	    cross join segments s
+	)
+	insert into analytics.ride_metrics_daily (
+	    stat_date,
+	    city,
+	    service_class,
+	    source_channel,
+	    driver_segment,
+	    completed_rides,
+	    cancelled_rides,
+	    gross_revenue_rub,
+	    avg_fare_rub,
+	    active_drivers
+	)
+	select
+	    stat_date,
+	    city,
+	    service_class,
+	    source_channel,
+	    driver_segment,
+	    completed_rides,
+	    cancelled_rides,
+	    round((completed_rides * avg_fare_rub)::numeric, 2) as gross_revenue_rub,
+	    round(avg_fare_rub::numeric, 2),
+	    active_drivers
+	from base
+	order by stat_date, city, service_class, source_channel, driver_segment;
+2026-04-20 13:59:33.733 MSK [20212] LOG:  checkpoint starting: time
+2026-04-20 14:02:10.125 MSK [20212] LOG:  checkpoint complete: wrote 1447 buffers (8.8%), wrote 3 SLRU buffers; 0 WAL file(s) added, 0 removed, 1 recycled; write=156.150 s, sync=0.232 s, total=156.392 s; sync files=362, longest=0.003 s, average=0.001 s; distance=10615 kB, estimate=10615 kB; lsn=0/224A4F0, redo lsn=0/2249DB0
+2026-04-20 14:06:40.624 MSK [11392] FATAL:  role "ptitc" does not exist
+2026-04-20 14:06:49.663 MSK [12788] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-04-20 14:06:49.663 MSK [3416] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-04-20 14:06:49.663 MSK [14532] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-04-20 14:06:49.663 MSK [8168] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-04-20 14:06:49.680 MSK [15008] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-04-20 14:06:49.680 MSK [5948] LOG:  could not receive data from client: An existing connection was forcibly closed by the remote host.
+	
+2026-04-20 14:09:33.147 MSK [20212] LOG:  checkpoint starting: time
+2026-04-20 14:09:33.585 MSK [20212] LOG:  checkpoint complete: wrote 4 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.427 s, sync=0.005 s, total=0.439 s; sync files=5, longest=0.002 s, average=0.001 s; distance=4 kB, estimate=9553 kB; lsn=0/224AF78, redo lsn=0/224AF20
+2026-04-20 14:19:33.594 MSK [20212] LOG:  checkpoint starting: time
+2026-04-20 14:19:34.579 MSK [20212] LOG:  checkpoint complete: wrote 9 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.971 s, sync=0.009 s, total=0.986 s; sync files=9, longest=0.002 s, average=0.001 s; distance=23 kB, estimate=8600 kB; lsn=0/2250CF8, redo lsn=0/2250CA0
+2026-04-20 14:24:33.585 MSK [20212] LOG:  checkpoint starting: time
+2026-04-20 14:24:35.654 MSK [20212] LOG:  checkpoint complete: wrote 19 buffers (0.1%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=2.050 s, sync=0.014 s, total=2.069 s; sync files=16, longest=0.002 s, average=0.001 s; distance=42 kB, estimate=7745 kB; lsn=0/225B6F0, redo lsn=0/225B660
+2026-04-20 14:41:26.829 MSK [23672] ERROR:  time zone displacement out of range: "-30d"
+2026-04-20 14:41:26.829 MSK [23672] CONTEXT:  unnamed portal parameter $1 = '...'
+2026-04-20 14:41:26.829 MSK [23672] STATEMENT:  select city as group_value, round(sum(gross_revenue_rub)::numeric, 2) as metric_value from analytics.v_ride_metrics where stat_date between $1 and $2 group by city order by metric_value desc limit 12
+2026-04-20 14:44:33.682 MSK [20212] LOG:  checkpoint starting: time
+2026-04-20 14:44:34.120 MSK [20212] LOG:  checkpoint complete: wrote 4 buffers (0.0%), wrote 1 SLRU buffers; 0 WAL file(s) added, 0 removed, 0 recycled; write=0.427 s, sync=0.005 s, total=0.439 s; sync files=5, longest=0.002 s, average=0.001 s; distance=4 kB, estimate=6970 kB; lsn=0/225C710, redo lsn=0/225C6B8

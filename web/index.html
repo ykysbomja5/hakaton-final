@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drivee Analytics Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-panel">
+          <div class="brand">
+            <span class="brand-word">driv</span><span class="brand-mark">ee</span>
+          </div>
+          <p class="brand-caption">Analytics Workspace</p>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="#workspace" class="nav-item active">Рабочая панель</a>
+          <a href="#results" class="nav-item">Результаты</a>
+          <a href="/reports.html" class="nav-item">Отчёты</a>
+        </nav>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="section-kicker">Внутренний аналитический сервис</p>
+            <h1>Панель бизнес-запросов на русском языке</h1>
+          </div>
+          <div class="topbar-meta">
+            <span class="status-pill safe">Безопасный режим</span>
+            <span class="status-pill" id="provider-pill">LLM: rule-based</span>
+          </div>
+        </header>
+
+        <section class="workspace-grid" id="workspace">
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <p class="section-kicker">Запрос</p>
+                <h2>Введите вопрос так, как его формулирует сотрудник бизнеса</h2>
+              </div>
+            </div>
+
+            <label class="field-label" for="query-input">Текстовый запрос</label>
+            <textarea id="query-input" rows="5" placeholder="Например: Покажи выручку по городам за последние 30 дней"></textarea>
+
+            <div class="button-row">
+              <button class="primary" id="parse-button">Понять запрос</button>
+              <button class="primary outline" id="run-button">Показать результат</button>
+              <button class="ghost" id="save-button">Сохранить отчёт</button>
+            </div>
+
+            <div class="response-banner" id="response-banner">Система готова к работе. Можно выбрать шаблон или ввести свой запрос.</div>
+            <div class="prompt-chips" id="sample-prompts"></div>
+          </div>
+
+          <div class="panel">
+            <p class="section-kicker">Как система поняла запрос</p>
+            <h3>Проверка перед выполнением</h3>
+            <div class="intent-summary" id="intent-summary">Пока нет интерпретации запроса.</div>
+            <dl class="intent-grid">
+              <div>
+                <dt>Что считаем</dt>
+                <dd id="intent-metric">—</dd>
+              </div>
+              <div>
+                <dt>Как разбиваем</dt>
+                <dd id="intent-group">—</dd>
+              </div>
+              <div>
+                <dt>За какой период</dt>
+                <dd id="intent-period">—</dd>
+              </div>
+              <div>
+                <dt>Насколько уверены</dt>
+                <dd id="intent-confidence">—</dd>
+              </div>
+            </dl>
+            <div class="chips-list" id="intent-filters"></div>
+            <div class="clarification-box" id="clarification-box"></div>
+          </div>
+        </section>
+
+        <section class="results-layout" id="results">
+          <div class="panel">
+            <div class="panel-head compact">
+              <div>
+                <p class="section-kicker">Итог</p>
+                <h3>Понятный результат для сотрудника</h3>
+              </div>
+            </div>
+            <div class="business-summary" id="business-summary">
+              <div class="summary-hero">
+                <span class="summary-label">Главный вывод</span>
+                <strong>Здесь появится короткий ответ по запросу</strong>
+                <p>После запуска система покажет основной итог в понятной форме.</p>
+              </div>
+              <div class="summary-stats" id="summary-stats"></div>
+            </div>
+          </div>
+
+          <div class="panel panel-chart">
+            <div class="panel-head compact">
+              <div>
+                <p class="section-kicker">Визуализация</p>
+                <h3>График и ключевые наблюдения</h3>
+              </div>
+            </div>
+            <div class="chart-insights" id="chart-insights"></div>
+            <div class="chart-surface" id="chart-surface">
+              <div class="chart-placeholder">После выполнения запроса здесь появится график или KPI-карточка.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="results-layout lower">
+          <div class="panel">
+            <div class="panel-head compact">
+              <div>
+                <p class="section-kicker">Данные</p>
+                <h3>Табличный результат</h3>
+              </div>
+              <span class="status-pill" id="result-count">0 строк</span>
+            </div>
+            <div class="table-wrap">
+              <table id="result-table">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <details class="technical-details">
+              <summary>Технические детали запроса</summary>
+              <pre class="sql-box" id="sql-preview">SQL появится после запуска запроса.</pre>
+            </details>
+          </div>
+
+          <div class="stack-column">
+            <div class="panel" id="reports">
+              <div class="panel-head compact">
+                <div>
+                  <p class="section-kicker">Отчёты</p>
+                  <h3>Сохранённые сценарии</h3>
+                </div>
+              </div>
+              <div class="reports-overview" id="report-list"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

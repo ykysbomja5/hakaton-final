@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drivee Analytics Reports</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="reports-page-shell">
+      <header class="reports-topbar">
+        <div>
+          <p class="section-kicker">Отчёты</p>
+          <h1>Сохранённые сценарии</h1>
+          <p class="reports-subtitle">Здесь собраны все сохранённые аналитические запросы. Можно быстро открыть любой отчёт заново.</p>
+        </div>
+        <a class="back-link" href="/">Вернуться на главную</a>
+      </header>
+
+      <section class="reports-page-panel">
+        <div class="reports-page-list" id="reports-page-list"></div>
+      </section>
+    </div>
+
+    <script src="/reports.js" defer></script>
+  </body>
+</html>
