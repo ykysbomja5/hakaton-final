@@ -18,11 +18,20 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// ValidationResult результат валидации SQL
+type ValidationResult struct {
+	IsValid      bool     `json:"is_valid"`
+	Errors       []string `json:"errors"`
+	Warnings     []string `json:"warnings"`
+	ValidatedSQL string   `json:"validated_sql"`
+}
+
 type application struct {
-	db      *pgxpool.Pool
-	client  *http.Client
-	llmURL  string
-	metaURL string
+	db          *pgxpool.Pool
+	client      *http.Client
+	llmURL      string
+	metaURL     string
+	sqlValidator *SQLValidator
 }
 
 func main() {
@@ -41,15 +50,18 @@ func main() {
 	defer pool.Close()
 
 	app := application{
-		db:      pool,
-		client:  &http.Client{Timeout: 25 * time.Second},
-		llmURL:  getenv("LLM_SERVICE_URL", "http://localhost:8082"),
-		metaURL: getenv("META_SERVICE_URL", "http://localhost:8084"),
+		db:           pool,
+		client:       &http.Client{Timeout: 25 * time.Second},
+		llmURL:       getenv("LLM_SERVICE_URL", "http://localhost:8082"),
+		metaURL:      getenv("META_SERVICE_URL", "http://localhost:8084"),
+		sqlValidator: NewSQLValidator(pool),
 	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/query/parse", app.handleParse)
 	mux.HandleFunc("/api/v1/query/run", app.handleRun)
+	mux.HandleFunc("/api/v1/query/generate-sql", app.handleGenerateSQL)
+	mux.HandleFunc("/api/v1/schema/enums", app.handleGetEnumValues)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		shared.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok", "service": "query"})
 	})
@@ -468,6 +480,208 @@ func nullableText(value string) any {
 		return nil
 	}
 	return value
+}
+
+func (app *application) handleGenerateSQL(w http.ResponseWriter, r *http.Request) {
+	if shared.HandlePreflight(w, r) {
+		return
+	}
+	if r.Method != http.MethodPost {
+		shared.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var req struct {
+		Text string `json:"text"`
+	}
+	if err := shared.DecodeJSON(r, &req); err != nil {
+		shared.WriteError(w, http.StatusBadRequest, "invalid json")
+		return
+	}
+
+	// Получаем semantic layer
+	layer, err := app.fetchSemanticLayer(r.Context())
+	if err != nil {
+		shared.WriteError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+
+	// Получаем enum значения из БД
+	enums, err := app.fetchEnumValues(r.Context())
+	if err != nil {
+		shared.WriteError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+
+	// Генерируем SQL через LLM
+	sqlReq := shared.SQLGenerationRequest{
+		Text:          req.Text,
+		SemanticLayer: layer,
+		Schema: shared.DBSchema{
+			EnumValues: enums,
+		},
+	}
+
+	sqlResp, err := app.generateSQLViaLLM(r.Context(), sqlReq)
+	if err != nil {
+		shared.WriteError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+
+	// Валидируем сгенерированный SQL
+	validation, err := app.sqlValidator.ValidateSQL(r.Context(), sqlResp.SQL)
+	if err != nil {
+		shared.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Если есть предупреждения о несуществующих значениях, добавляем их
+	if len(validation.Warnings) > 0 {
+		sqlResp.Warnings = append(sqlResp.Warnings, validation.Warnings...)
+	}
+
+	// Если SQL невалиден, возвращаем ошибку
+	if !validation.IsValid {
+		shared.WriteJSON(w, http.StatusBadRequest, map[string]any{
+			"error":      "SQL validation failed",
+			"details":    validation.Errors,
+			"sql":        sqlResp.SQL,
+			"explanation": sqlResp.Explanation,
+		})
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, map[string]any{
+		"sql":         validation.ValidatedSQL,
+		"explanation": sqlResp.Explanation,
+		"used_filters": sqlResp.UsedFilters,
+		"confidence":  sqlResp.Confidence,
+		"warnings":    sqlResp.Warnings,
+		"validation":  validation,
+	})
+}
+
+func (app *application) handleGetEnumValues(w http.ResponseWriter, r *http.Request) {
+	if shared.HandlePreflight(w, r) {
+		return
+	}
+	if r.Method != http.MethodGet {
+		shared.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	enums, err := app.fetchEnumValues(r.Context())
+	if err != nil {
+		shared.WriteError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+
+	shared.WriteJSON(w, http.StatusOK, enums)
+}
+
+func (app *application) fetchEnumValues(ctx context.Context) (shared.EnumValues, error) {
+	enums := shared.EnumValues{
+		Cities:         []string{},
+		ServiceClasses: []string{},
+		SourceChannels: []string{},
+		DriverSegments: []string{},
+	}
+
+	// Получаем города
+	rows, err := app.db.Query(ctx, `
+		SELECT DISTINCT city FROM analytics.ride_metrics_daily 
+		WHERE stat_date >= CURRENT_DATE - INTERVAL '90 days'
+		ORDER BY city
+	`)
+	if err != nil {
+		return enums, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var city string
+		if err := rows.Scan(&city); err == nil {
+			enums.Cities = append(enums.Cities, city)
+		}
+	}
+
+	// Получаем тарифы
+	rows2, err := app.db.Query(ctx, `
+		SELECT DISTINCT service_class FROM analytics.ride_metrics_daily 
+		WHERE stat_date >= CURRENT_DATE - INTERVAL '90 days'
+		ORDER BY service_class
+	`)
+	if err != nil {
+		return enums, err
+	}
+	defer rows2.Close()
+	for rows2.Next() {
+		var sc string
+		if err := rows2.Scan(&sc); err == nil {
+			enums.ServiceClasses = append(enums.ServiceClasses, sc)
+		}
+	}
+
+	// Получаем каналы
+	rows3, err := app.db.Query(ctx, `
+		SELECT DISTINCT source_channel FROM analytics.ride_metrics_daily 
+		WHERE stat_date >= CURRENT_DATE - INTERVAL '90 days'
+		ORDER BY source_channel
+	`)
+	if err != nil {
+		return enums, err
+	}
+	defer rows3.Close()
+	for rows3.Next() {
+		var ch string
+		if err := rows3.Scan(&ch); err == nil {
+			enums.SourceChannels = append(enums.SourceChannels, ch)
+		}
+	}
+
+	// Получаем сегменты
+	rows4, err := app.db.Query(ctx, `
+		SELECT DISTINCT driver_segment FROM analytics.ride_metrics_daily 
+		WHERE stat_date >= CURRENT_DATE - INTERVAL '90 days'
+		ORDER BY driver_segment
+	`)
+	if err != nil {
+		return enums, err
+	}
+	defer rows4.Close()
+	for rows4.Next() {
+		var seg string
+		if err := rows4.Scan(&seg); err == nil {
+			enums.DriverSegments = append(enums.DriverSegments, seg)
+		}
+	}
+
+	return enums, nil
+}
+
+func (app *application) generateSQLViaLLM(ctx context.Context, req shared.SQLGenerationRequest) (shared.SQLGenerationResponse, error) {
+	payload := req
+	rawBody, _ := json.Marshal(payload)
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, app.llmURL+"/v1/sql", bytes.NewReader(rawBody))
+	if err != nil {
+		return shared.SQLGenerationResponse{}, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	resp, err := app.client.Do(httpReq)
+	if err != nil {
+		return shared.SQLGenerationResponse{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		return shared.SQLGenerationResponse{}, fmt.Errorf("llm service error: %s", string(body))
+	}
+
+	var sqlResp shared.SQLGenerationResponse
+	if err := json.NewDecoder(resp.Body).Decode(&sqlResp); err != nil {
+		return shared.SQLGenerationResponse{}, err
+	}
+	return sqlResp, nil
 }
 
 func getenv(key, fallback string) string {

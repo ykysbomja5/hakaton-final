@@ -75,6 +75,50 @@ type IntentResponse struct {
 	Provider string `json:"provider"`
 }
 
+type SQLGenerationRequest struct {
+	Text          string        `json:"text"`
+	SemanticLayer SemanticLayer `json:"semantic_layer"`
+	Schema        DBSchema      `json:"schema"`
+}
+
+type DBSchema struct {
+	Tables   []TableInfo   `json:"tables"`
+	EnumValues EnumValues  `json:"enum_values"`
+}
+
+type TableInfo struct {
+	Name    string   `json:"name"`
+	Columns []Column `json:"columns"`
+}
+
+type Column struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+type EnumValues struct {
+	Cities          []string `json:"cities"`
+	ServiceClasses  []string `json:"service_classes"`
+	SourceChannels  []string `json:"source_channels"`
+	DriverSegments  []string `json:"driver_segments"`
+}
+
+type SQLGenerationResponse struct {
+	SQL          string   `json:"sql"`
+	Explanation  string   `json:"explanation"`
+	UsedFilters  []Filter `json:"used_filters"`
+	Confidence   float64  `json:"confidence"`
+	Warnings     []string `json:"warnings"`
+	Provider     string   `json:"provider"`
+}
+
+type ValidationResult struct {
+	IsValid      bool     `json:"is_valid"`
+	Errors       []string `json:"errors"`
+	Warnings     []string `json:"warnings"`
+	ValidatedSQL string   `json:"validated_sql"`
+}
+
 type QueryPreview struct {
 	Summary            string   `json:"summary"`
 	MetricLabel        string   `json:"metric_label"`
