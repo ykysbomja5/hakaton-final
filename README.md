@@ -1,457 +1,558 @@
-# Drivee Analytics MVP
+<div align="center">
 
-Микросервисный прототип self-service аналитической платформы на русском языке. Позволяет бизнес-пользователям задавать вопросы естественным языком и получать структурированные аналитические отчёты с визуализацией — без знания SQL.
+<img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=200&section=header&text=Drivee%20Analytics&fontSize=60&fontColor=fff&animation=twinkling&fontAlignY=35&desc=Self-Service%20NL%E2%86%92SQL%20Platform&descAlignY=55&descSize=20"/>
 
-## Что делает этот проект
+<br>
 
-Проект решает задачу **Natural Language to SQL (NL→SQL)** для аналитики такси-сервиса:
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-1.25-00ADD8?style=for-the-badge&logo=go&logoColor=white&labelColor=000" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white&labelColor=000" />
+  <img src="https://img.shields.io/badge/Microservices-Architecture-FF6B6B?style=for-the-badge&logo=docker&logoColor=white&labelColor=000" />
+  <img src="https://img.shields.io/badge/GigaChat-AI-00A651?style=for-the-badge&logo=openai&logoColor=white&labelColor=000" />
+</p>
 
-1. Пользователь вводит вопрос на русском языке: *"Покажи выручку по городам за последние 30 дней"*
-2. Система интерпретирует запрос через LLM (GigaChat/YandexGPT) или локальный rule-based парсер
-3. Формирует безопасный SQL-запрос с учётом semantic layer (разрешённые метрики и измерения)
-4. Выполняет запрос в PostgreSQL через read-only соединение
-5. Возвращает результат в виде таблицы и графика
-6. Позволяет сохранить отчёт для повторного использования
+<p align="center">
+  <img src="https://img.shields.io/badge/YandexGPT-Alternative-FFCC00?style=for-the-badge&logo=yandex&logoColor=black&labelColor=000" />
+  <img src="https://img.shields.io/badge/license-MIT-00C853?style=for-the-badge&logo=opensourceinitiative&logoColor=white&labelColor=000" />
+  <img src="https://img.shields.io/badge/Made%20with-❤️-ff69b4?style=for-the-badge&labelColor=000" />
+</p>
 
-### Ключевые особенности
+<br>
 
-- **Безопасность**: LLM никогда не генерирует SQL напрямую — только структурированный intent
-- **Explainability**: Пользователь видит интерпретацию запроса, confidence score и SQL preview
-- **Guardrails**: Только SELECT-запросы, allowlist метрик/измерений, read-only роль БД
-- **Fallback**: Работает без внешних API ключей в rule-based режиме
+**🚀 Превращайте русский текст в аналитику за секунды**
 
----
+*Безопасный NL→SQL pipeline с explainability, guardrails и визуализацией*
 
-## Архитектура
+[🌟 Демо](#-демо) • [🚀 Быстрый старт](#-быстрый-старт) • [📖 Документация](#-архитектура) • [🛡️ Безопасность](#️-безопасность)
 
-### Микросервисы
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              GATEWAY (8080)                                 │
-│  - Отдаёт статический frontend (HTML/CSS/JS)                               │
-│  - Проксирует API-запросы к внутренним сервисам                            │
-└─────────────────────────────────────────────────────────────────────────────┘
-                                      │
-        ┌─────────────┬───────────────┼───────────────┬─────────────┐
-        ▼             ▼               ▼               ▼             ▼
-   ┌─────────┐   ┌─────────┐    ┌─────────┐    ┌──────────┐   ┌─────────┐
-   │  META   │   │   LLM   │    │  QUERY  │    │ REPORTS  │   │   DB    │
-   │ (8084)  │   │ (8082)  │    │ (8081)  │    │ (8083)   │   │(Postgre │
-   └─────────┘   └─────────┘    └─────────┘    └──────────┘   │  SQL)   │
-        │             │               │               │        └─────────┘
-        │             │               │               │
-        └─────────────┴───────────────┴───────────────┘
-```
-
-| Сервис | Порт | Описание |
-|--------|------|----------|
-| **gateway** | 8080 | Единая точка входа. Раздаёт веб-интерфейс и проксирует API |
-| **meta** | 8084 | Semantic layer: метрики, измерения, бизнес-термины, шаблоны вопросов |
-| **llm** | 8082 | Интерпретация русского текста в структурированный intent JSON |
-| **query** | 8081 | Валидация intent, построение SQL, выполнение запросов, explainability |
-| **reports** | 8083 | Сохранение отчётов, история запусков, повторное выполнение |
-
-### Поток данных
-
-```
-Пользователь → Gateway → Query Service
-                              ↓
-                    ┌────────┴────────┐
-                    ▼                 ▼
-              Meta Service      LLM Service
-                    │                 │
-                    └────────┬────────┘
-                             ▼
-                    Intent JSON (структура)
-                             ↓
-                    SQL Builder + Validator
-                             ↓
-                    PostgreSQL (read-only)
-                             ↓
-                    Результат + Chart metadata
-                             ↓
-                    Gateway → Frontend
-```
+</div>
 
 ---
 
-## Структура проекта
+<br>
+
+## ✨ Что это?
+
+<div align="center">
 
 ```
-.
-├── cmd/                          # Точки входа для каждого микросервиса
-│   ├── gateway/                  # API Gateway + статический frontend
-│   │   └── main.go
-│   ├── llm/                      # LLM Service (GigaChat/YandexGPT/rule-based)
-│   │   └── main.go
-│   ├── meta/                     # Meta Service (semantic layer)
-│   │   └── main.go
-│   ├── query/                    # Query Service (SQL builder + executor)
-│   │   └── main.go
-│   └── reports/                  # Reports Service (сохранение отчётов)
-│       └── main.go
-│
-├── internal/shared/              # Общие компоненты
-│   ├── contracts.go              # Структуры данных: Intent, QueryRequest, etc.
-│   ├── http.go                   # HTTP-хелперы
-│   └── pg.go                     # PostgreSQL подключение
-│
-├── db/                           # База данных
-│   ├── schema.sql                # Схема БД: таблицы, view, индексы, роли
-│   └── seed.sql                  # Демо-данные
-│
-├── web/                          # Frontend (статические файлы)
-│   ├── index.html                # Главная страница
-│   ├── reports.html              # Страница отчётов
-│   ├── app.js                    # Логика главной страницы
-│   ├── reports.js                # Логика отчётов
-│   └── styles.css                # Стили
-│
-├── docs/                         # Документация
-│   ├── architecture.md           # Архитектурное описание
-│   └── implementation-plan.md    # План реализации
-│
-├── scripts/                      # Утилиты
-│   └── run-local.ps1             # PowerShell скрипт для запуска всех сервисов
-│
-├── docker-compose.yml            # Docker Compose для PostgreSQL
-├── .env.example                  # Пример переменных окружения
-├── go.mod                        # Go модули
-└── README.md                     # Этот файл
+┌─────────────────────────────────────────────────────────────────┐
+│  "Покажи выручку по городам за последние 30 дней"              │
+│                        ⬇️                                        │
+│              🧠 LLM (GigaChat/YandexGPT)                        │
+│                        ⬇️                                        │
+│              📊 Intent JSON (структура)                         │
+│                        ⬇️                                        │
+│              🔒 SQL Builder (Go)                                │
+│                        ⬇️                                        │
+│              📈 Результат + График                              │
+└─────────────────────────────────────────────────────────────────┘
 ```
+
+</div>
+
+<br>
+
+**Drivee Analytics** — это микросервисная платформа self-service аналитики, которая позволяет бизнес-пользователям:
+
+| 💬 | Задавать вопросы на русском языке |
+|----|-----------------------------------|
+| 🔒 | Получать безопасные SQL-запросы |
+| 📊 | Видеть результаты в таблицах и графиках |
+| 💾 | Сохранять отчёты для повторного использования |
+| 🧠 | Понимать логику через explainability |
+
+<br>
 
 ---
 
-## Технологический стек
+<br>
 
-| Компонент | Технология |
-|-----------|------------|
-| Backend | Go 1.25 |
-| База данных | PostgreSQL 16 |
-| Драйвер БД | pgx/v5 |
-| LLM провайдеры | GigaChat (Sber), YandexGPT |
-| Frontend | Vanilla JS, HTML5, CSS3 |
-| Контейнеризация | Docker, Docker Compose |
+## 🎥 Демо
+
+<div align="center">
+
+### 🖼️ Интерфейс платформы
+
+<p align="center">
+  <kbd>
+    <img src="https://via.placeholder.com/800x400/1a1a2e/ffffff?text=Drivee+Analytics+Dashboard" width="800" />
+  </kbd>
+</p>
+
+*💡 Замените на реальный скриншот: `web/screenshot.png`*
+
+</div>
+
+<br>
+
+### 🎯 Примеры запросов
+
+<table>
+<tr>
+<td width="50%">
+
+**💬 Ввод пользователя:**
+```text
+Покажи выручку по городам 
+за последние 30 дней
+```
+
+</td>
+<td width="50%">
+
+**🧠 Интерпретация:**
+```json
+{
+  "metric": "revenue",
+  "group_by": "city",
+  "period": "last_30_days",
+  "confidence": 0.95
+}
+```
+
+</td>
+</tr>
+<tr>
+<td colspan="2" align="center">
+
+**📊 Результат:**
+
+| Город | Выручка | График |
+|-------|---------|--------|
+| Москва | ₽2.4M | 📈 |
+| СПб | ₽1.8M | 📈 |
+| Казань | ₽890K | 📈 |
+
+</td>
+</tr>
+</table>
+
+<br>
 
 ---
 
-## Быстрый старт
+<br>
 
-### Предварительные требования
+## 🏗️ Архитектура
 
-- [Go 1.25+](https://go.dev/dl/)
-- [PostgreSQL 16](https://www.postgresql.org/download/) (или Docker)
-- PowerShell (для Windows) или терминал (для Linux/Mac)
-- (Опционально) API ключи GigaChat или YandexGPT
+<div align="center">
 
-### Способ 1: С Docker (рекомендуется)
+```mermaid
+flowchart TB
+    subgraph "🌐 Frontend"
+        U[👤 Пользователь]
+        F[📱 Web UI]
+    end
 
-```powershell
+    subgraph "🚪 Gateway"
+        G[🔀 API Gateway<br/>Port: 8080]
+    end
+
+    subgraph "⚙️ Microservices"
+        direction TB
+        M[📚 Meta Service<br/>Port: 8084]
+        L[🧠 LLM Service<br/>Port: 8082]
+        Q[⚡ Query Service<br/>Port: 8081]
+        R[💾 Reports Service<br/>Port: 8083]
+    end
+
+    subgraph "🗄️ Data Layer"
+        DB[(🐘 PostgreSQL 16)]
+    end
+
+    U --> F
+    F --> G
+    G --> M
+    G --> L
+    G --> Q
+    G --> R
+    Q --> M
+    Q --> L
+    Q --> DB
+    R --> DB
+```
+
+</div>
+
+<br>
+
+### 📋 Микросервисы
+
+<table>
+<tr>
+<td width="20%" align="center">
+
+### 🚪 Gateway
+`8080`
+
+</td>
+<td>
+
+Единая точка входа. Раздаёт статический frontend и проксирует API-запросы к внутренним сервисам.
+
+</td>
+</tr>
+<tr>
+<td align="center">
+
+### 📚 Meta
+`8084`
+
+</td>
+<td>
+
+Semantic layer: метрики, измерения, бизнес-термины, шаблоны вопросов.
+
+</td>
+</tr>
+<tr>
+<td align="center">
+
+### 🧠 LLM
+`8082`
+
+</td>
+<td>
+
+Интерпретация русского текста в структурированный intent JSON. Поддержка GigaChat, YandexGPT и rule-based fallback.
+
+</td>
+</tr>
+<tr>
+<td align="center">
+
+### ⚡ Query
+`8081`
+
+</td>
+<td>
+
+Валидация intent, построение SQL, выполнение запросов, explainability, генерация графиков.
+
+</td>
+</tr>
+<tr>
+<td align="center">
+
+### 💾 Reports
+`8083`
+
+</td>
+<td>
+
+Сохранение отчётов, история запусков, повторное выполнение.
+
+</td>
+</tr>
+</table>
+
+<br>
+
+---
+
+<br>
+
+## 🚀 Быстрый старт
+
+<div align="center">
+
+### ⚡ Запуск за 5 минут
+
+</div>
+
+<br>
+
+<details open>
+<summary><b>🐳 Способ 1: С Docker (рекомендуется)</b></summary>
+<br>
+
+```bash
 # 1. Клонируйте репозиторий
 git clone https://github.com/ykysbomja5/hakaton-final.git
 cd hakaton-final
 
-# 2. Запустите PostgreSQL в Docker
+# 2. Запустите PostgreSQL
 docker-compose up -d
 
-# 3. Дождитесь инициализации БД (схема и данные применятся автоматически)
-Start-Sleep -Seconds 10
+# 3. Дождитесь инициализации (10 сек)
+sleep 10
 
-# 4. Скопируйте и настройте переменные окружения
-copy .env.example .env
-# Отредактируйте .env при необходимости
-
-# 5. Запустите все сервисы
+# 4. Запустите все сервисы
 powershell -ExecutionPolicy Bypass -File .\scripts\run-local.ps1
 
-# 6. Откройте http://localhost:8080
+# 5. Откройте http://localhost:8080 🎉
 ```
 
-### Способ 2: Без Docker (локальная PostgreSQL)
+</details>
 
-```powershell
-# 1. Создайте базу данных
+<br>
+
+<details>
+<summary><b>💻 Способ 2: Без Docker</b></summary>
+<br>
+
+```bash
+# 1. Создайте БД
 createdb drivee_analytics
 
 # 2. Примените схему
 psql -d drivee_analytics -f db/schema.sql
 
-# 3. Загрузите демо-данные
+# 3. Загрузите данные
 psql -d drivee_analytics -f db/seed.sql
 
-# 4. Настройте переменные окружения
-$env:PG_DSN = "postgres://postgres:postgres@localhost:5432/drivee_analytics?sslmode=disable"
-$env:GATEWAY_PORT = "8080"
-$env:QUERY_PORT = "8081"
-$env:LLM_PORT = "8082"
-$env:REPORTS_PORT = "8083"
-$env:META_PORT = "8084"
+# 4. Настройте окружение
+copy .env.example .env
 
-# 5. Запустите все сервисы
+# 5. Запустите
 powershell -ExecutionPolicy Bypass -File .\scripts\run-local.ps1
-
-# 6. Откройте http://localhost:8080
 ```
 
-### Ручной запуск (для разработки)
+</details>
 
-```powershell
-# В отдельных терминалах:
+<br>
 
-go run ./cmd/meta      # Порт 8084
-go run ./cmd/llm       # Порт 8082
-go run ./cmd/query     # Порт 8081
-go run ./cmd/reports   # Порт 8083
-go run ./cmd/gateway   # Порт 8080
+<div align="center">
+
+### 🎯 После запуска
+
+<p align="center">
+  <a href="http://localhost:8080">
+    <img src="https://img.shields.io/badge/🌐_Открыть_приложение-http://localhost:8080-00ADD8?style=for-the-badge&labelColor=000" />
+  </a>
+</p>
+
+</div>
+
+<br>
+
+---
+
+<br>
+
+## 🛡️ Безопасность
+
+<div align="center">
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    🔒 MULTI-LAYER SECURITY                      │
+├─────────────────────────────────────────────────────────────────┤
+│  1️⃣  LLM → Intent JSON (никакого SQL)                          │
+│  2️⃣  SQL Builder → Только allowlist колонки                    │
+│  3️⃣  Validator → Только SELECT                                 │
+│  4️⃣  PostgreSQL → Read-only роль                               │
+│  5️⃣  Logging → Полный аудит в query_logs                       │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
+</div>
+
+<br>
+
+<table>
+<tr>
+<td width="50%">
+
+### ✅ Что разрешено
+
+- ✅ Только `SELECT` запросы
+- ✅ Разрешённые метрики из white-list
+- ✅ Параметризованные запросы
+- ✅ Read-only соединение с БД
+
+</td>
+<td width="50%">
+
+### ❌ Что заблокировано
+
+- ❌ `DROP`, `DELETE`, `UPDATE`, `INSERT`
+- ❌ Прямой доступ LLM к БД
+- ❌ Неразрешённые таблицы/колонки
+- ❌ Подозрительные паттерны
+
+</td>
+</tr>
+</table>
+
+<br>
+
 ---
 
-## Конфигурация
+<br>
 
-### Переменные окружения
+## 📊 Доступные метрики
 
-Создайте файл `.env` на основе `.env.example`:
+<div align="center">
 
-```env
-# Подключение к БД
-PG_DSN=postgres://postgres:postgres@localhost:5432/drivee_analytics?sslmode=disable
+<table>
+<tr>
+<th>📈 Метрика</th>
+<th>Описание</th>
+<th>Пример запроса</th>
+</tr>
+<tr>
+<td><code>revenue</code></td>
+<td>💰 Выручка</td>
+<td><i>"Выручка по городам"</i></td>
+</tr>
+<tr>
+<td><code>completed_rides</code></td>
+<td>🚗 Завершённые поездки</td>
+<td><i>"Поездки по тарифам"</i></td>
+</tr>
+<tr>
+<td><code>cancellations</code></td>
+<td>❌ Отмены</td>
+<td><i>"Отмены за неделю"</i></td>
+</tr>
+<tr>
+<td><code>avg_fare</code></td>
+<td>💳 Средний чек</td>
+<td><i>"Средний чек по дням"</i></td>
+</tr>
+<tr>
+<td><code>active_drivers</code></td>
+<td>👨‍✈️ Активные водители</td>
+<td><i>"Водители по сегментам"</i></td>
+</tr>
+</table>
 
-# Порты сервисов
-GATEWAY_PORT=8080
-QUERY_PORT=8081
-LLM_PORT=8082
-REPORTS_PORT=8083
-META_PORT=8084
+</div>
 
-# URL внутренних сервисов
-QUERY_SERVICE_URL=http://localhost:8081
-LLM_SERVICE_URL=http://localhost:8082
-REPORTS_SERVICE_URL=http://localhost:8083
-META_SERVICE_URL=http://localhost:8084
+<br>
 
-# Настройки LLM
-LLM_PROVIDER=gigachat        # gigachat | yandexgpt | rule-based
-LLM_FALLBACK=rule-based      # fallback при ошибке основного провайдера
+---
 
-# GigaChat (получить: https://developers.sber.ru/)
-GIGACHAT_AUTH_KEY=
-GIGACHAT_SCOPE=GIGACHAT_API_PERS
-GIGACHAT_MODEL=GigaChat-2-Max
-GIGACHAT_AUTH_URL=https://ngw.devices.sberbank.ru:9443/api/v2/oauth
-GIGACHAT_CHAT_URL=https://gigachat.devices.sberbank.ru/api/v1/chat/completions
+<br>
 
-# YandexGPT (получить: https://yandex.cloud/ru/docs/foundation-models/)
-YANDEX_API_KEY=
-YANDEX_IAM_TOKEN=
-YANDEX_FOLDER_ID=
-YANDEX_MODEL_URI=
-YANDEX_COMPLETION_URL=https://llm.api.cloud.yandex.net/foundationModels/v1/completion
+## 🔧 Технологический стек
+
+<div align="center">
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Go-00ADD8?style=flat-square&logo=go&logoColor=white" height="30" />
+  &nbsp;
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" height="30" />
+  &nbsp;
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white" height="30" />
+  &nbsp;
+  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=black" height="30" />
+</p>
+
+<br>
+
+| Компонент | Технология | Версия |
+|-----------|------------|--------|
+| Backend | Go | 1.25 |
+| Database | PostgreSQL | 16 |
+| Driver | pgx | v5 |
+| LLM | GigaChat / YandexGPT | - |
+| Frontend | Vanilla JS | ES6+ |
+| Container | Docker | Latest |
+
+</div>
+
+<br>
+
+---
+
+<br>
+
+## 📁 Структура проекта
+
+```
+📦 drivee-analytics
+├── 📂 cmd/                    # Микросервисы
+│   ├── 🚪 gateway/            # API Gateway (8080)
+│   ├── 🧠 llm/                # LLM Service (8082)
+│   ├── ⚡ query/               # Query Service (8081)
+│   ├── 💾 reports/             # Reports Service (8083)
+│   └── 📚 meta/                # Meta Service (8084)
+│
+├── 📂 internal/shared/        # Общий код
+│   ├── 📄 contracts.go        # Структуры данных
+│   ├── 📄 http.go             # HTTP helpers
+│   └── 📄 pg.go               # PostgreSQL
+│
+├── 📂 web/                    # Frontend
+│   ├── 📄 index.html
+│   ├── 📄 app.js
+│   └── 📄 styles.css
+│
+├── 📂 db/                     # База данных
+│   ├── 📄 schema.sql          # Схема
+│   └── 📄 seed.sql            # Данные
+│
+└── 📄 docker-compose.yml      # Docker конфиг
 ```
 
-### Режимы работы LLM
-
-| Режим | Описание | Требования |
-|-------|----------|------------|
-| `rule-based` | Локальный парсер без внешних API | Не требует ключей |
-| `gigachat` | Sber GigaChat API | Требует `GIGACHAT_AUTH_KEY` |
-| `yandexgpt` | YandexGPT API | Требует `YANDEX_API_KEY` или `YANDEX_IAM_TOKEN` |
-
-Если ключи не заданы, система автоматически переключается на `rule-based` режим.
+<br>
 
 ---
 
-## Использование
+<br>
 
-### Демо-сценарии
+## 🌟 Roadmap
 
-Откройте http://localhost:8080 и попробуйте эти запросы:
+<div align="center">
 
-1. **Выручка по городам**
-   ```
-   Покажи выручку по городам за последние 30 дней
-   ```
+| Статус | Фича |
+|--------|------|
+| ✅ | Базовый NL→SQL |
+| ✅ | GigaChat интеграция |
+| ✅ | Визуализация |
+| ✅ | Сохранение отчётов |
+| 🚧 | RBAC авторизация |
+| 🚧 | Кэширование |
+| 📋 | Slack/Email рассылки |
+| 📋 | Materialized views |
 
-2. **Отмены по тарифам**
-   ```
-   Сколько было отмен по тарифам на прошлой неделе
-   ```
+</div>
 
-3. **Средний чек по дням**
-   ```
-   Покажи средний чек по дням за последние 14 дней
-   ```
-
-4. **Каналы в Москве**
-   ```
-   Какие каналы дают больше всего поездок в Москве за месяц
-   ```
-
-### Функционал интерфейса
-
-- **Ввод запроса**: Текстовое поле с подсказками
-- **Explainability**: Интерпретация запроса, confidence score
-- **SQL Preview**: Показывается сгенерированный SQL
-- **Результат**: Таблица с данными
-- **Визуализация**: Автоматический график (линейный/столбчатый)
-- **Сохранение**: Кнопка "Сохранить отчёт"
-- **История**: Переход на страницу отчётов для повторного запуска
+<br>
 
 ---
 
-## Доступные метрики и измерения
+<br>
 
-### Метрики
+## 🤝 Contributing
 
-| ID | Название | Описание | Формат |
-|----|----------|----------|--------|
-| `completed_rides` | Завершенные поездки | Количество завершенных поездок | Целое число |
-| `total_rides` | Все поездки | Сумма завершенных и отмененных | Целое число |
-| `cancellations` | Отмены | Количество отмененных поездок | Целое число |
-| `revenue` | Выручка | Суммарная выручка в рублях | Валюта |
-| `avg_fare` | Средний чек | Средняя стоимость поездки | Валюта |
-| `active_drivers` | Активные водители | Количество активных водителей | Целое число |
+<div align="center">
 
-### Измерения (группировка)
+**Приветствуем PR и Issues!**
 
-| ID | Название | Описание |
-|----|----------|----------|
-| `day` | День | Дневная гранулярность |
-| `week` | Неделя | Недельная гранулярность |
-| `month` | Месяц | Месячная гранулярность |
-| `city` | Город | Москва, Санкт-Петербург, Казань, Екатеринбург, Новосибирск |
-| `service_class` | Тариф | Эконом, Комфорт, Бизнес |
-| `source_channel` | Канал | Приложение, Сайт, Партнеры |
-| `driver_segment` | Сегмент водителя | Новые, Стабильные, Премиум |
+<p align="center">
+  <a href="https://github.com/ykysbomja5/hakaton-final/issues">
+    <img src="https://img.shields.io/badge/🐛_Сообщить_об_ошибке-FF6B6B?style=for-the-badge&labelColor=000" />
+  </a>
+  &nbsp;
+  <a href="https://github.com/ykysbomja5/hakaton-final/pulls">
+    <img src="https://img.shields.io/badge/🚀_Сделать_PR-00C853?style=for-the-badge&labelColor=000" />
+  </a>
+</p>
+
+</div>
+
+<br>
 
 ---
 
-## Безопасность (Guardrails)
+<br>
 
-1. **LLM не имеет доступа к БД** — только формирует структуру intent
-2. **SQL строится только backend-ом** — детерминированная логика на Go
-3. **Только SELECT** — любые другие операции блокируются
-4. **Allowlist** — только разрешённые метрики и измерения из semantic layer
-5. **Read-only роль** — отдельный пользователь `analytics_readonly` в БД
-6. **Журналирование** — все запросы логируются в `app.query_logs`
-7. **Confidence score** — низкая уверенность требует уточнения
+<div align="center">
 
----
+### 📜 Лицензия
 
-## API Endpoints
+MIT License © 2024 Drivee Analytics Team
 
-### Gateway (8080)
+<br>
 
-| Метод | Путь | Описание |
-|-------|------|----------|
-| GET | `/` | Главная страница |
-| GET | `/reports` | Страница отчётов |
-| POST | `/api/query/parse` | Распознать намерение |
-| POST | `/api/query/run` | Выполнить запрос |
-| POST | `/api/reports` | Сохранить отчёт |
-| GET | `/api/reports` | Список отчётов |
-| POST | `/api/reports/{id}/run` | Перезапустить отчёт |
-| GET | `/api/meta/semantic-layer` | Получить semantic layer |
+<p align="center">
+  <img src="https://capsule-render.vercel.app/api?type=waving&color=gradient&customColorList=6,11,20&height=100&section=footer"/>
+</p>
 
-### Внутренние сервисы
+**⭐ Если проект полезен — поставьте звезду!**
 
-**Meta Service (8084)**
-- `GET /semantic-layer` — метрики, измерения, термины
-
-**LLM Service (8082)**
-- `POST /parse` — текст → intent JSON
-
-**Query Service (8081)**
-- `POST /parse` — текст → intent + preview
-- `POST /run` — выполнить запрос → результат + график
-
-**Reports Service (8083)**
-- `GET /reports` — список отчётов
-- `POST /reports` — сохранить отчёт
-- `POST /reports/{id}/run` — перезапустить
-
----
-
-## Разработка
-
-### Структура данных
-
-**Intent** — структурированное намерение пользователя:
-```go
-type Intent struct {
-    Metric        string    // Выбранная метрика (revenue, completed_rides, ...)
-    GroupBy       string    // Группировка (city, day, service_class, ...)
-    Filters       []Filter  // Фильтры
-    Period        TimeRange // Временной диапазон
-    Sort          string    // Сортировка
-    Limit         int       // Лимит строк
-    Clarification string    // Уточнение при неоднозначности
-    Assumptions   []string  // Сделанные предположения
-    Confidence    float64   // Уверенность (0.0 - 1.0)
-}
-```
-
-### Добавление новой метрики
-
-1. Добавьте в `internal/shared/contracts.go`:
-```go
-{ID: "new_metric", Title: "Новая метрика", Description: "...", Format: "integer"}
-```
-
-2. Добавьте бизнес-термин:
-```go
-{Term: "новый термин", Kind: "metric", Canonical: "new_metric", Description: "..."}
-```
-
-3. Обновите view `analytics.v_ride_metrics` в `db/schema.sql`
-
----
-
-## Тестирование
-
-```powershell
-# Проверка работоспособности сервисов
-curl http://localhost:8080
-curl http://localhost:8084/semantic-layer
-
-# Тест parse endpoint
-curl -X POST http://localhost:8081/parse `
-  -H "Content-Type: application/json" `
-  -d '{"text": "выручка по городам"}'
-
-# Тест run endpoint
-curl -X POST http://localhost:8081/run `
-  -H "Content-Type: application/json" `
-  -d '{"text": "покажи выручку по городам за последние 7 дней"}'
-```
-
----
-
-## Частые вопросы
-
-**Q: Почему LLM не генерирует SQL напрямую?**  
-A: Для безопасности и контроля. LLM только интерпретирует намерение, а SQL строится детерминированным кодом с валидацией.
-
-**Q: Как защититься от инъекций?**  
-A: Несколько уровней: структурированный intent, allowlist колонок, prepared statements, read-only роль БД.
-
-**Q: Можно ли подключить свою схему данных?**  
-A: Да, замените view `analytics.v_ride_metrics` на своё представление или materialized view.
-
-**Q: Как масштабировать?**  
-A: Каждый сервис независим — можно масштабировать `query` и `llm` отдельно, добавить кэширование, очереди.
-
----
-
-## Лицензия
-
-MIT License — свободное использование для образовательных и коммерческих целей.
-
----
-
-## Контакты
-
-Проект разработан для хакатона Drivee Analytics Challenge.
-
-Репозиторий: https://github.com/ykysbomja5/hakaton-final
+</div>
