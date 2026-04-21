@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drivee Analytics Glossary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-panel">
+          <div class="brand">
+            <span class="brand-word">driv</span><span class="brand-mark">ee</span>
+          </div>
+          <p class="brand-caption">Analytics Workspace</p>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="/" class="nav-item">Запросы</a>
+          <a href="/#results" class="nav-item">Инфографика</a>
+          <a href="/glossary.html" class="nav-item active">Словарь</a>
+          <a href="/#templates" class="nav-item">Шаблоны</a>
+          <a href="/reports.html" class="nav-item">Архив</a>
+        </nav>
+
+        <div class="sidebar-footnote">
+          <span class="sidebar-label">Словарь терминов</span>
+          <strong>Бизнес-лексика</strong>
+          <p>Метрики, измерения и фильтры в одном месте, чтобы быстрее формулировать корректные запросы.</p>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="section-kicker">Словарь</p>
+            <h1>Основные бизнес-термины</h1>
+            <p class="topbar-copy">Изучайте словарь метрик, измерений и фильтров, чтобы быстрее составлять аналитические вопросы для сервиса.</p>
+          </div>
+        </header>
+
+        <section class="archive-grid">
+          <article class="panel">
+            <div class="panel-head compact">
+              <div>
+                <p class="section-kicker">Термины</p>
+                <h3>Бизнес-словарь платформы</h3>
+              </div>
+            </div>
+
+            <div class="glossary-toolbar">
+              <input id="glossary-search" type="text" placeholder="Поиск по термину, описанию или каноническому значению" />
+              <div class="filter-pills" id="glossary-filters">
+                <button class="filter-pill active" data-kind="all">Все</button>
+                <button class="filter-pill" data-kind="metric">Метрики</button>
+                <button class="filter-pill" data-kind="dimension">Измерения</button>
+                <button class="filter-pill" data-kind="filter">Фильтры</button>
+              </div>
+            </div>
+
+            <div class="glossary-grid" id="glossary-list"></div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="/glossary.js" defer></script>
+  </body>
+</html>

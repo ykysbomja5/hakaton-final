@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drivee Analytics Workspace</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-panel">
+          <div class="brand">
+            <span class="brand-word">driv</span><span class="brand-mark">ee</span>
+          </div>
+          <p class="brand-caption">Analytics Control Room</p>
+        </div>
+
+        <nav class="sidebar-nav">
+          <a href="#workspace" class="nav-item active">Запросы</a>
+          <a href="#results" class="nav-item">Инфографика</a>
+          <a href="/glossary.html" class="nav-item">Словарь</a>
+          <a href="#templates" class="nav-item">Шаблоны</a>
+          <a href="/reports.html" class="nav-item">Архив</a>
+        </nav>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div>
+            <p class="section-kicker">Внутренний аналитический сервис</p>
+            <h1>Панель бизнес-запросов на русском языке</h1>
+          </div>
+          <div class="topbar-meta">
+            <span class="status-pill safe">Guardrails включены</span>
+            <span class="status-pill" id="provider-pill">LLM: rule-based</span>
+          </div>
+        </header>
+
+        <section class="workspace-grid" id="workspace">
+          <article class="panel panel-hero">
+            <div class="panel-head">
+              <div>
+                <p class="section-kicker">Запрос</p>
+                <h2>Опишите задачу так, как её формулирует бизнес</h2>
+              </div>
+              <div class="panel-badge">Workspace</div>
+            </div>
+
+            <label class="field-label" for="query-input">Текстовый запрос</label>
+            <textarea id="query-input" rows="5" placeholder="Например: Покажи выручку по городам за последние 30 дней"></textarea>
+
+            <div class="button-row">
+              <button class="primary" id="parse-button">Понять запрос</button>
+              <button class="primary outline" id="run-button">Показать результат</button>
+              <button class="ghost" id="save-button">Сохранить отчёт</button>
+              <button class="ghost accent" id="add-template-button">Добавить шаблон</button>
+            </div>
+
+            <div class="button-row compact">
+              <button class="mini-button" id="export-pdf-button">Скачать PDF</button>
+            </div>
+
+            <div class="response-banner" id="response-banner">Система готова к работе. Можно выбрать шаблон, ввести запрос вручную или открыть сохранённый сценарий.</div>
+
+            <div class="prompt-chips-head">
+              <span class="field-label">Мои шаблоны</span>
+              <small>Нажмите, чтобы подставить созданный шаблон в редактор</small>
+            </div>
+            <div class="prompt-chips" id="sample-prompts"></div>
+          </article>
+
+          <article class="panel panel-intent">
+            <div class="panel-head">
+              <div>
+                <p class="section-kicker">Интерпретация</p>
+                <h2>Как система поняла ваш запрос</h2>
+              </div>
+              <div class="panel-badge subtle">Explainability</div>
+            </div>
+
+            <div class="intent-summary" id="intent-summary">Пока нет интерпретации запроса.</div>
+
+            <dl class="intent-grid">
+              <div>
+                <dt>Что считаем</dt>
+                <dd id="intent-metric">—</dd>
+              </div>
+              <div>
+                <dt>Как разбиваем</dt>
+                <dd id="intent-group">—</dd>
+              </div>
+              <div>
+                <dt>За какой период</dt>
+                <dd id="intent-period">—</dd>
+              </div>
+              <div>
+                <dt>Уверенность</dt>
+                <dd id="intent-confidence">—</dd>
+              </div>
+            </dl>
+
+            <div class="insight-strip" id="intent-highlight-strip"></div>
+            <div class="chips-list" id="intent-filters"></div>
+            <div class="clarification-box" id="clarification-box"></div>
+          </article>
+        </section>
+
+        <section class="results-layout" id="results">
+          <article class="panel panel-story">
+            <div class="panel-head compact">
+              <div>
+                <p class="section-kicker">Итог</p>
+                <h3>Понятный ответ и ключевые цифры</h3>
+              </div>
+            </div>
+
+            <div class="business-summary" id="business-summary">
+              <div class="summary-hero">
+                <span class="summary-label">Главный вывод</span>
+                <strong>Здесь появится короткий ответ по запросу</strong>
+                <p>После запуска система покажет ключевой итог, сильные и слабые зоны, а также контекст для презентации.</p>
+              </div>
+            </div>
+
+            <div class="summary-stats" id="summary-stats"></div>
+            <div class="story-grid" id="story-grid"></div>
+          </article>
+
+          <article class="panel panel-chart">
+            <div class="panel-head compact">
+              <div>
+                <p class="section-kicker">Инфографика</p>
+                <h3>График, акценты и управленческий ракурс</h3>
+              </div>
+            </div>
+            <div class="chart-insights" id="chart-insights"></div>
+            <div class="chart-stage" id="chart-stage">
+              <div class="chart-surface" id="chart-surface">
+                <div class="chart-placeholder">После выполнения запроса здесь появится более выразительная визуализация с аналитическими акцентами.</div>
+              </div>
+              <div class="ranking-panel" id="ranking-panel"></div>
+            </div>
+          </article>
+        </section>
+
+        <section class="results-layout lower">
+          <article class="panel">
+            <div class="panel-head compact">
+              <div>
+                <p class="section-kicker">Данные</p>
+                <h3>Табличный результат и SQL</h3>
+              </div>
+              <span class="status-pill" id="result-count">0 строк</span>
+            </div>
+
+            <div class="table-wrap">
+              <table id="result-table">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <details class="technical-details">
+              <summary>Технические детали запроса</summary>
+              <pre class="sql-box" id="sql-preview">SQL появится после запуска запроса.</pre>
+            </details>
+          </article>
+
+          <div class="stack-column">
+            <article class="panel" id="templates">
+              <div class="panel-head compact">
+                <div>
+                  <p class="section-kicker">Шаблоны</p>
+                  <h3>Собственные сценарии и регулярные отчёты</h3>
+                </div>
+              </div>
+
+              <form class="template-form" id="template-form">
+                <input type="hidden" id="template-id" />
+                <label class="field-label" for="template-name">Название шаблона</label>
+                <input id="template-name" type="text" placeholder="Например: Выручка по городам" />
+
+                <label class="field-label" for="template-description">Описание</label>
+                <input id="template-description" type="text" placeholder="Кратко: для чего нужен шаблон и кому он полезен" />
+
+                <label class="field-label" for="template-query">Текст шаблона</label>
+                <textarea id="template-query" rows="4" placeholder="Например: Покажи выручку по городам за последние 30 дней"></textarea>
+
+                <div class="schedule-card">
+                  <label class="checkbox-line">
+                    <input type="checkbox" id="template-schedule-enabled" />
+                    <span>Запускать регулярно и сразу сохранять отчёт</span>
+                  </label>
+
+                  <div class="schedule-grid">
+                    <div>
+                      <label class="field-label" for="template-schedule-day">День недели</label>
+                      <select id="template-schedule-day">
+                        <option value="1">Понедельник</option>
+                        <option value="2">Вторник</option>
+                        <option value="3">Среда</option>
+                        <option value="4">Четверг</option>
+                        <option value="5">Пятница</option>
+                        <option value="6">Суббота</option>
+                        <option value="0">Воскресенье</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="field-label" for="template-schedule-time">Время запуска</label>
+                      <input id="template-schedule-time" type="time" value="13:00" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="button-row compact">
+                  <button class="primary" type="submit" id="template-save-button">Сохранить шаблон</button>
+                  <button class="ghost" type="button" id="template-cancel-button">Сбросить форму</button>
+                </div>
+              </form>
+
+              <div class="template-list" id="template-list"></div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

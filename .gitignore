@@ -1,0 +1,7 @@
+.env
+.bin/
+.cache/
+.local-pg/
+.local-pg17/
+.runlogs/
+*.exe
