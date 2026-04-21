@@ -13,7 +13,11 @@ import (
 )
 
 func main() {
-	port := getenv("PORT", "8080")
+	if err := shared.LoadDotEnv(".env"); err != nil {
+		log.Fatalf("failed to load .env: %v", err)
+	}
+
+	port := getenv("PORT", getenv("GATEWAY_PORT", "8080"))
 	queryURL := mustParseURL(getenv("QUERY_SERVICE_URL", "http://localhost:8081"))
 	reportsURL := mustParseURL(getenv("REPORTS_SERVICE_URL", "http://localhost:8083"))
 	metaURL := mustParseURL(getenv("META_SERVICE_URL", "http://localhost:8084"))

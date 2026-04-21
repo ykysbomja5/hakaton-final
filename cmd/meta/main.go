@@ -13,7 +13,11 @@ import (
 )
 
 func main() {
-	port := getenv("PORT", "8084")
+	if err := shared.LoadDotEnv(".env"); err != nil {
+		log.Fatalf("failed to load .env: %v", err)
+	}
+
+	port := getenv("PORT", getenv("META_PORT", "8084"))
 	dsn := os.Getenv("PG_DSN")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

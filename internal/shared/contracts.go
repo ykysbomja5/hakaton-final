@@ -52,10 +52,10 @@ type DimensionDefinition struct {
 }
 
 type BusinessTerm struct {
-	Term          string `json:"term"`
-	Kind          string `json:"kind"`
-	Canonical     string `json:"canonical"`
-	Description   string `json:"description"`
+	Term        string `json:"term"`
+	Kind        string `json:"kind"`
+	Canonical   string `json:"canonical"`
+	Description string `json:"description"`
 }
 
 type SemanticLayer struct {
@@ -76,19 +76,21 @@ type IntentResponse struct {
 }
 
 type QueryPreview struct {
-	Summary            string   `json:"summary"`
-	MetricLabel        string   `json:"metric_label"`
-	GroupByLabel       string   `json:"group_by_label,omitempty"`
-	AppliedFilters     []string `json:"applied_filters,omitempty"`
-	Assumptions        []string `json:"assumptions,omitempty"`
-	Clarification      string   `json:"clarification,omitempty"`
-	ConfidenceLabel    string   `json:"confidence_label"`
+	Summary         string   `json:"summary"`
+	MetricLabel     string   `json:"metric_label"`
+	GroupByLabel    string   `json:"group_by_label,omitempty"`
+	AppliedFilters  []string `json:"applied_filters,omitempty"`
+	Assumptions     []string `json:"assumptions,omitempty"`
+	Clarification   string   `json:"clarification,omitempty"`
+	ConfidenceLabel string   `json:"confidence_label"`
 }
 
 type ParseResponse struct {
-	Intent        Intent       `json:"intent"`
-	Preview       QueryPreview `json:"preview"`
+	Intent        Intent        `json:"intent"`
+	Preview       QueryPreview  `json:"preview"`
 	SemanticLayer SemanticLayer `json:"semantic_layer"`
+	SQL           string        `json:"sql,omitempty"`
+	Provider      string        `json:"provider,omitempty"`
 }
 
 type QueryResult struct {
@@ -110,6 +112,7 @@ type RunResponse struct {
 	Result        QueryResult   `json:"result"`
 	Chart         ChartSpec     `json:"chart"`
 	SemanticLayer SemanticLayer `json:"semantic_layer"`
+	Provider      string        `json:"provider,omitempty"`
 }
 
 type SaveReportRequest struct {

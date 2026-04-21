@@ -23,7 +23,11 @@ type application struct {
 }
 
 func main() {
-	port := getenv("PORT", "8083")
+	if err := shared.LoadDotEnv(".env"); err != nil {
+		log.Fatalf("failed to load .env: %v", err)
+	}
+
+	port := getenv("PORT", getenv("REPORTS_PORT", "8083"))
 	dsn := os.Getenv("PG_DSN")
 	if strings.TrimSpace(dsn) == "" {
 		log.Fatal("PG_DSN is required for reports service")
